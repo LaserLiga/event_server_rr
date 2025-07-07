@@ -21,6 +21,7 @@ type Plugin struct {
 	cfg     *Config
 	log     *zap.Logger
 	metrics *statsExporter
+	srv     *http.Server
 	es      eventsource.EventSource
 	eventId int
 }
