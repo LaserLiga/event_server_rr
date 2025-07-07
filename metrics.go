@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	namespace = "rr_file_watch"
+	namespace = "event_server"
 )
 
 type statsExporter struct {
