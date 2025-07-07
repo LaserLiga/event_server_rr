@@ -1,4 +1,4 @@
-package eventServer
+package eventserver
 
 import (
 	"sync/atomic"
@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	namespace = "event_server"
+	namespace = "eventserver"
 )
 
 type statsExporter struct {

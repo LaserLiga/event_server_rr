@@ -1,4 +1,4 @@
-package eventServer
+package eventserver
 
 import (
 	"gopkg.in/antage/eventsource.v1"
@@ -10,7 +10,7 @@ import "github.com/roadrunner-server/errors"
 import _ "gopkg.in/antage/eventsource.v1"
 
 const (
-	PluginName = "event_server"
+	PluginName = "eventserver"
 
 	// v2.7 and newer config key
 	cfgKey string = "config"
@@ -57,4 +57,12 @@ func (s *Plugin) Init(cfg Configurer, log Logger) error {
 	)
 
 	return nil
+}
+
+func (s *Plugin) Name() string {
+	return PluginName
+}
+
+func (s *Plugin) RPC() any {
+	return &rpc{plugin: s, log: s.log, mx: sync.Mutex{}}
 }

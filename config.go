@@ -1,4 +1,4 @@
-package eventServer
+package eventserver
 
 type Config struct {
 	Address string `mapstructure:"address"`
