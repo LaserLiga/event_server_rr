@@ -12,12 +12,12 @@ type rpc struct {
 	mx     sync.Mutex
 }
 
-type eventMessage struct {
+type EventMessage struct {
 	Type    string `json:"type"`
 	Message string `json:"data"`
 }
 
-func (r *rpc) TriggerEvent(input eventMessage, output *int) error {
+func (r *rpc) TriggerEvent(input EventMessage, output *int) error {
 	r.mx.Lock()
 
 	r.plugin.es.SendEventMessage(input.Type, "event", strconv.Itoa(r.plugin.eventId))
