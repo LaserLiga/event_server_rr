@@ -20,11 +20,12 @@ func (s *Plugin) Serve() chan error {
 	mux := http.NewServeMux()
 	mux.Handle("/events", s.es)
 	s.srv = &http.Server{Addr: s.cfg.Address, Handler: mux}
-	err := s.srv.ListenAndServe()
-	if err != nil {
-		errCh <- errors.E(op, err)
-		return errCh
-	}
+	go func() {
+		err := s.srv.ListenAndServe()
+		if err != nil {
+			errCh <- errors.E(op, err)
+		}
+	}()
 
 	return errCh
 }
@@ -78,10 +79,12 @@ func (s *Plugin) Reset() error {
 	mux := http.NewServeMux()
 	mux.Handle("/events", s.es)
 	s.srv = &http.Server{Addr: s.cfg.Address, Handler: mux}
-	err := s.srv.ListenAndServe()
-	if err != nil {
-		return errors.E(op, err)
-	}
+	go func() {
+		err := s.srv.ListenAndServe()
+		if err != nil {
+			return
+		}
+	}()
 
 	return nil
 }
