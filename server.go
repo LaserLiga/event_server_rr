@@ -11,7 +11,7 @@ import (
 
 func (s *Plugin) Serve() chan error {
 	const op = errors.Op("event_server_serve")
-	errCh := make(chan error, 1)
+	s.errCh = make(chan error, 1)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -40,11 +40,11 @@ func (s *Plugin) Serve() chan error {
 	go func() {
 		err := s.srv.ListenAndServe()
 		if err != nil && !er.Is(err, http.ErrServerClosed) {
-			errCh <- errors.E(op, err)
+			s.errCh <- errors.E(op, err)
 		}
 	}()
 
-	return errCh
+	return s.errCh
 }
 
 func (s *Plugin) Stop(ctx context.Context) error {
@@ -72,5 +72,58 @@ func (s *Plugin) Stop(ctx context.Context) error {
 		s.srv = nil
 	}
 
+	return nil
+}
+
+func (s *Plugin) Reset() error {
+	const op = errors.Op("event_server_reset")
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.log.Info("Resetting event server...")
+
+	// Reset event ID
+	s.eventId = 0
+
+	// Close existing event source
+	if s.es != nil {
+		s.es.Close()
+	}
+
+	// Shutdown HTTP server if it exists
+	if s.srv != nil {
+		err := s.srv.Shutdown(context.Background())
+		if err != nil {
+			return errors.E(op, err)
+		}
+	}
+
+	// Create a new event source
+	s.es = eventsource.New(
+		eventsource.DefaultSettings(),
+		func(req *http.Request) [][]byte {
+			return [][]byte{
+				[]byte("Connection: keep-alive"),
+				[]byte("Cache-Control: no-cache"),
+				[]byte("Access-Control-Allow-Origin: *"),
+				[]byte("Access-Control-Allow-Methods: GET, POST, OPTIONS"),
+			}
+		},
+	)
+
+	// Start a new HTTP server
+	mux := http.NewServeMux()
+	mux.Handle("/events", s.es)
+	s.srv = &http.Server{Addr: s.cfg.Address, Handler: mux}
+
+	go func() {
+		err := s.srv.ListenAndServe()
+		if err != nil && !er.Is(err, http.ErrServerClosed) {
+			s.errCh <- errors.E(op, err)
+		}
+	}()
+
+	s.log.Info("Event server successfully reset")
 	return nil
 }

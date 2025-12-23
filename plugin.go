@@ -11,9 +11,6 @@ import _ "gopkg.in/antage/eventsource.v1"
 
 const (
 	PluginName = "eventserver"
-
-	// v2.7 and newer config key
-	cfgKey string = "config"
 )
 
 type Plugin struct {
@@ -24,6 +21,7 @@ type Plugin struct {
 	srv     *http.Server
 	es      eventsource.EventSource
 	eventId int
+	errCh   chan error
 }
 
 func (s *Plugin) Init(cfg Configurer, log Logger) error {
