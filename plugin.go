@@ -31,11 +31,17 @@ type pluginState uint8
 
 const (
 	stateStopped pluginState = iota
+	stateResetting
 	stateRunning
 	stateFailed
 )
 
-var errEventServerNotRunning = errors.New("event server is not running")
+var (
+	errEventServerNotRunning       = errors.New("event server is not running")
+	errEventServerResetInProgress  = errors.New("event server reset is in progress")
+	errEventServerResetInterrupted = errors.New("event server state changed during reset")
+	errEventServerAlreadyRunning   = errors.New("event server is already running")
+)
 
 func (s *Plugin) Init(cfg Configurer, log Logger) error {
 	const op = rrErrors.Op("event_server_plugin_init")

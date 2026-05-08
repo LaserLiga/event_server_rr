@@ -119,6 +119,30 @@ func TestResetBeforeServeStartsServer(t *testing.T) {
 	}
 }
 
+func TestServeDuringResetReturnsError(t *testing.T) {
+	p := newTestPlugin("127.0.0.1:0")
+	p.state = stateResetting
+
+	errCh := p.Serve()
+
+	select {
+	case err := <-errCh:
+		if err == nil {
+			t.Fatal("expected reset-in-progress error")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for reset-in-progress error")
+	}
+
+	st, err := p.Ready()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected unavailable while resetting, got %d", st.Code)
+	}
+}
+
 func TestMetricsCollectorBeforeInitIsSafe(t *testing.T) {
 	var p Plugin
 	if collectors := p.MetricsCollector(); collectors != nil {

@@ -26,6 +26,10 @@ func (s *Plugin) Serve() chan error {
 	}
 
 	s.errCh = make(chan error, 1)
+	if s.state == stateResetting {
+		s.errCh <- rrErrors.E(op, errEventServerResetInProgress)
+		return s.errCh
+	}
 	if err := s.startServerLocked(op); err != nil {
 		s.errCh <- err
 	}
@@ -70,7 +74,7 @@ func (s *Plugin) Reset() error {
 	s.srv = nil
 	s.es = nil
 	s.eventId = 0
-	s.state = stateStopped
+	s.state = stateResetting
 	s.lastErr = nil
 	s.mu.Unlock()
 
@@ -84,12 +88,23 @@ func (s *Plugin) Reset() error {
 		ctx, cancel := context.WithTimeout(context.Background(), resetShutdownTimeout)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
-			return rrErrors.E(op, err)
+			wrapped := rrErrors.E(op, err)
+			s.mu.Lock()
+			if s.state == stateResetting {
+				s.state = stateFailed
+				s.lastErr = wrapped
+			}
+			s.mu.Unlock()
+			return wrapped
 		}
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.srv != nil || s.es != nil || s.eventId != 0 || s.state != stateResetting || s.lastErr != nil {
+		return rrErrors.E(op, errEventServerResetInterrupted)
+	}
 
 	if s.errCh == nil {
 		s.errCh = make(chan error, 1)
@@ -108,7 +123,7 @@ func (s *Plugin) Reset() error {
 
 func (s *Plugin) startServerLocked(op rrErrors.Op) error {
 	if s.state == stateRunning {
-		return rrErrors.E(op, rrErrors.Str("event server is already running"))
+		return rrErrors.E(op, errEventServerAlreadyRunning)
 	}
 
 	ln, err := net.Listen("tcp", s.cfg.Address)
