@@ -1,13 +1,14 @@
 package eventserver
 
 import (
-	"gopkg.in/antage/eventsource.v1"
+	"errors"
 	"net/http"
 	"sync"
+
+	rrErrors "github.com/roadrunner-server/errors"
+	"go.uber.org/zap"
+	"gopkg.in/antage/eventsource.v1"
 )
-import "go.uber.org/zap"
-import "github.com/roadrunner-server/errors"
-import _ "gopkg.in/antage/eventsource.v1"
 
 const (
 	PluginName = "eventserver"
@@ -22,27 +23,53 @@ type Plugin struct {
 	es      eventsource.EventSource
 	eventId int
 	errCh   chan error
+	state   pluginState
+	lastErr error
 }
 
+type pluginState uint8
+
+const (
+	stateStopped pluginState = iota
+	stateRunning
+	stateFailed
+)
+
+var errEventServerNotRunning = errors.New("event server is not running")
+
 func (s *Plugin) Init(cfg Configurer, log Logger) error {
-	const op = errors.Op("event_server_plugin_init")
+	const op = rrErrors.Op("event_server_plugin_init")
 	if !cfg.Has(PluginName) {
-		return errors.E(op, errors.Disabled)
+		return rrErrors.E(op, rrErrors.Disabled)
 	}
 
 	err := cfg.UnmarshalKey(PluginName, &s.cfg)
 	if err != nil {
-		return errors.E(op, err)
+		return rrErrors.E(op, err)
 	}
 
 	s.cfg.InitDefaults()
 
-	s.log = new(zap.Logger)
 	s.log = log.NamedLogger(PluginName)
 
 	s.eventId = 0
 	s.metrics = newStatsExporter()
-	s.es = eventsource.New(
+	s.state = stateStopped
+	s.lastErr = nil
+
+	return nil
+}
+
+func (s *Plugin) Name() string {
+	return PluginName
+}
+
+func (s *Plugin) RPC() any {
+	return &rpc{plugin: s, log: s.log}
+}
+
+func newEventSource() eventsource.EventSource {
+	return eventsource.New(
 		eventsource.DefaultSettings(),
 		func(req *http.Request) [][]byte {
 			return [][]byte{
@@ -53,14 +80,4 @@ func (s *Plugin) Init(cfg Configurer, log Logger) error {
 			}
 		},
 	)
-
-	return nil
-}
-
-func (s *Plugin) Name() string {
-	return PluginName
-}
-
-func (s *Plugin) RPC() any {
-	return &rpc{plugin: s, log: s.log, mx: sync.Mutex{}}
 }

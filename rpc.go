@@ -1,15 +1,14 @@
 package eventserver
 
 import (
+	rrErrors "github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 	"strconv"
-	"sync"
 )
 
 type rpc struct {
 	plugin *Plugin
 	log    *zap.Logger
-	mx     sync.Mutex
 }
 
 type EventMessage struct {
@@ -18,7 +17,14 @@ type EventMessage struct {
 }
 
 func (r *rpc) TriggerEvent(input EventMessage, output *int) error {
-	r.mx.Lock()
+	const op = rrErrors.Op("event_server_trigger_event")
+
+	r.plugin.mu.Lock()
+	defer r.plugin.mu.Unlock()
+
+	if r.plugin.state != stateRunning || r.plugin.es == nil {
+		return rrErrors.E(op, errEventServerNotRunning)
+	}
 
 	r.plugin.es.SendEventMessage(input.Type, "event", strconv.Itoa(r.plugin.eventId))
 	r.plugin.eventId++
@@ -27,10 +33,9 @@ func (r *rpc) TriggerEvent(input EventMessage, output *int) error {
 		r.plugin.es.SendEventMessage(input.Message, "message", strconv.Itoa(r.plugin.eventId))
 		r.plugin.eventId++
 	}
-	r.mx.Unlock()
 
 	*output = r.plugin.eventId
-	r.log.Info("Event triggered", zap.String("type", input.Type), zap.String("message", input.Message), zap.Int("eventId", r.plugin.eventId))
+	r.log.Info("Event triggered", zap.String("type", input.Type), zap.String("message", input.Message), zap.Int("eventId", *output))
 	if r.plugin.metrics != nil {
 		r.plugin.metrics.CountEvents()
 	}

@@ -9,8 +9,7 @@ func (s *Plugin) Status() (*status.Status, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Check if the server is running
-	if s.srv != nil && s.es != nil {
+	if s.state == stateRunning && s.srv != nil && s.es != nil {
 		return &status.Status{
 			Code: http.StatusOK,
 		}, nil
@@ -25,8 +24,7 @@ func (s *Plugin) Ready() (*status.Status, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Check if the server is running
-	if s.srv != nil && s.es != nil {
+	if s.state == stateRunning && s.srv != nil && s.es != nil {
 		return &status.Status{
 			Code: http.StatusOK,
 		}, nil

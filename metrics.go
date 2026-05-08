@@ -17,7 +17,10 @@ type statsExporter struct {
 }
 
 func (s *Plugin) MetricsCollector() []prometheus.Collector {
-	// p - implements Exporter interface (workers)
+	if s.metrics == nil {
+		return nil
+	}
+
 	return []prometheus.Collector{s.metrics}
 }
 
@@ -29,7 +32,7 @@ func newStatsExporter() *statsExporter {
 	return &statsExporter{
 		events: toPtr(uint64(0)),
 
-		eventsDesc: prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "events"), "Number of events registered in the directory", nil, nil),
+		eventsDesc: prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "events"), "Number of events sent by the event server", nil, nil),
 	}
 }
 
@@ -39,8 +42,7 @@ func (se *statsExporter) Describe(d chan<- *prometheus.Desc) {
 }
 
 func (se *statsExporter) Collect(ch chan<- prometheus.Metric) {
-	// send the values to the prometheus
-	ch <- prometheus.MustNewConstMetric(se.eventsDesc, prometheus.GaugeValue, float64(atomic.LoadUint64(se.events)))
+	ch <- prometheus.MustNewConstMetric(se.eventsDesc, prometheus.CounterValue, float64(atomic.LoadUint64(se.events)))
 }
 
 func toPtr[T any](v T) *T {
