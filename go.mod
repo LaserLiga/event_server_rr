@@ -1,11 +1,11 @@
 module github.com/LaserLiga/event_server_rr
 
-go 1.25
+go 1.26.2
 
 require (
 	github.com/prometheus/client_golang v1.23.2
-	github.com/roadrunner-server/api/v4 v4.23.0
-	github.com/roadrunner-server/errors v1.4.1
+	github.com/roadrunner-server/api/v4 v4.24.0
+	github.com/roadrunner-server/errors v1.5.0
 	go.uber.org/zap v1.27.1
 	gopkg.in/antage/eventsource.v1 v1.0.0-20150318155416-803f4c5af225
 )
@@ -19,6 +19,6 @@ require (
 	github.com/prometheus/procfs v0.19.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
